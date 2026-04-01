@@ -65,23 +65,32 @@
 
 {% if current_user.port_forwards %}
 <div class="card">
-  <div class="card-title">Port Forwards</div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr><th>External Port</th><th>Your Internal Port</th><th>Protocol</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        {% for pf in current_user.port_forwards %}
-        <tr>
-          <td><span class="monospace">:{{ pf.external_port }}</span></td>
-          <td><span class="monospace">localhost:{{ pf.internal_port }}</span></td>
-          <td><span class="badge badge-accent">{{ pf.protocol.upper() }}</span></td>
-          <td class="text-muted">{{ pf.description or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-title">Your Exposed Services</div>
+  <p class="text-muted" style="font-size:12px;margin-bottom:16px">
+    These are the ports your admin has set up so people can reach services running on your machine.
+    Make sure the app is running on your machine and you're connected to the VPN.
+  </p>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    {% for pf in current_user.port_forwards %}
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <strong style="font-size:13px">{{ pf.description or 'Service' }}</strong>
+        <span class="badge badge-accent">{{ pf.protocol.upper() }}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        People connect to this address to reach your machine:
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+        <span class="monospace" style="color:var(--accent)">{{ server_endpoint }}:{{ pf.external_port }}</span>
+        <span style="color:var(--muted)">→</span>
+        <span style="color:var(--muted)">your machine's</span>
+        <span class="monospace" style="color:var(--success)">localhost:{{ pf.internal_port }}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">
+        Make sure your app is listening on port <strong>{{ pf.internal_port }}</strong> and you're connected to the VPN.
+      </div>
+    </div>
+    {% endfor %}
   </div>
 </div>
 {% endif %}

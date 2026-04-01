@@ -17,7 +17,8 @@ def dashboard():
     peer_status = None
     if current_user.peer and current_user.peer.public_key in live:
         peer_status = live[current_user.peer.public_key]
-    return render_template('client/dashboard.html', peer_status=peer_status, now=time.time(), fmt_bytes=fmt_bytes)
+    server_endpoint = ServerConfig.get('server_endpoint', 'your-vpn-server')
+    return render_template('client/dashboard.html', peer_status=peer_status, now=time.time(), fmt_bytes=fmt_bytes, server_endpoint=server_endpoint)
 
 
 @client_bp.route('/config')

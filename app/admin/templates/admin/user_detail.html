@@ -76,33 +76,68 @@
 <div class="card">
   <div class="section-header">
     <h2>Port Forwards</h2>
+    <span class="text-muted" style="font-size:12px">CGNAT Bypass — expose {{ user.username }}'s services to the internet</span>
+  </div>
+
+  <!-- How it works diagram -->
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;font-size:13px">
+    <div style="font-weight:600;margin-bottom:10px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">How CGNAT bypass works</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px">
+          <div style="color:var(--muted);font-size:10px;margin-bottom:2px">INTERNET</div>
+          <div class="monospace">anyone</div>
+        </div>
+      </div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="text-align:center">
+        <div style="background:rgba(79,142,247,0.1);border:1px solid var(--accent);border-radius:6px;padding:8px 14px;font-size:12px">
+          <div style="color:var(--accent);font-size:10px;margin-bottom:2px">VPN SERVER (public)</div>
+          <div class="monospace">{{ server_endpoint }}:<strong style="color:var(--accent)">PUBLIC PORT</strong></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">← set "Public Port" to this</div>
+      </div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="text-align:center">
+        <div style="background:rgba(61,186,122,0.1);border:1px solid var(--success);border-radius:6px;padding:8px 14px;font-size:12px">
+          <div style="color:var(--success);font-size:10px;margin-bottom:2px">{{ user.username }}'s MACHINE (behind CGNAT)</div>
+          <div class="monospace">localhost:<strong style="color:var(--success)">APP PORT</strong></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">← set "App Port" to this</div>
+      </div>
+    </div>
   </div>
 
   {% if user.peer %}
-  <form method="POST" action="/admin/users/{{ user.id }}/port-forwards/new" style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr auto;gap:10px;align-items:end;margin-bottom:16px">
-    <div>
-      <label>External Port</label>
-      <input type="number" name="external_port" placeholder="e.g. 25565" min="1" max="65535">
-    </div>
-    <div>
-      <label>Internal Port</label>
-      <input type="number" name="internal_port" placeholder="e.g. 25565" min="1" max="65535">
-    </div>
-    <div>
-      <label>Protocol</label>
-      <select name="protocol">
-        <option value="tcp">TCP</option>
-        <option value="udp">UDP</option>
-        <option value="both">TCP + UDP</option>
-      </select>
-    </div>
-    <div>
-      <label>Description</label>
-      <input type="text" name="description" placeholder="e.g. Minecraft Server">
-    </div>
-    <div>
-      <label>&nbsp;</label>
-      <button type="submit" class="btn btn-primary">Add</button>
+  <form method="POST" action="/admin/users/{{ user.id }}/port-forwards/new">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr auto;gap:12px;align-items:start;margin-bottom:16px">
+      <div>
+        <label>Public Port <span style="color:var(--accent)">&#9679;</span></label>
+        <input type="number" name="external_port" placeholder="e.g. 25565" min="1" max="65535" required>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Port on <em>this server</em> the internet connects to</div>
+      </div>
+      <div>
+        <label>App Port <span style="color:var(--success)">&#9679;</span></label>
+        <input type="number" name="internal_port" placeholder="e.g. 25565" min="1" max="65535" required>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Port the app is running on <em>{{ user.username }}'s machine</em></div>
+      </div>
+      <div>
+        <label>Protocol</label>
+        <select name="protocol">
+          <option value="tcp">TCP</option>
+          <option value="udp">UDP</option>
+          <option value="both">TCP + UDP</option>
+        </select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Game servers often need UDP</div>
+      </div>
+      <div>
+        <label>Description</label>
+        <input type="text" name="description" placeholder="e.g. Minecraft Server, Plex, Web App">
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button type="submit" class="btn btn-primary">Add Forward</button>
+      </div>
     </div>
   </form>
   {% endif %}
@@ -111,13 +146,23 @@
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>External Port</th><th>Internal Port</th><th>Protocol</th><th>Description</th><th>Action</th></tr>
+        <tr>
+          <th>Traffic Flow</th>
+          <th>Protocol</th>
+          <th>Description</th>
+          <th>Action</th>
+        </tr>
       </thead>
       <tbody>
         {% for pf in user.port_forwards %}
         <tr>
-          <td><span class="monospace">:{{ pf.external_port }}</span></td>
-          <td><span class="monospace">{{ user.peer.vpn_ip if user.peer else '?' }}:{{ pf.internal_port }}</span></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+              <span class="monospace" style="color:var(--accent)">{{ server_endpoint }}:{{ pf.external_port }}</span>
+              <span style="color:var(--muted)">→</span>
+              <span class="monospace" style="color:var(--success)">localhost:{{ pf.internal_port }}</span>
+            </div>
+          </td>
           <td><span class="badge badge-accent">{{ pf.protocol.upper() }}</span></td>
           <td class="text-muted">{{ pf.description or '—' }}</td>
           <td>
@@ -131,7 +176,7 @@
     </table>
   </div>
   {% else %}
-  <p class="text-muted">No port forwards configured for this user.</p>
+  <p class="text-muted">No port forwards yet. Add one above to expose a service running on {{ user.username }}'s machine.</p>
   {% endif %}
 </div>
 

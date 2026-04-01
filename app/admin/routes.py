@@ -95,7 +95,8 @@ def user_detail(user_id):
     peer_status = None
     if user.peer and user.peer.public_key in live:
         peer_status = live[user.peer.public_key]
-    return render_template('admin/user_detail.html', user=user, peer_status=peer_status, now=time.time(), fmt_bytes=fmt_bytes)
+    server_endpoint = ServerConfig.get('server_endpoint', 'your-server-ip')
+    return render_template('admin/user_detail.html', user=user, peer_status=peer_status, now=time.time(), fmt_bytes=fmt_bytes, server_endpoint=server_endpoint)
 
 
 @admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -167,11 +168,21 @@ def add_port_forward(user_id):
     description = request.form.get('description', '').strip()
 
     if not (1 <= ext_port <= 65535) or not (1 <= int_port <= 65535):
-        flash('Invalid port numbers.', 'error')
+        flash('Invalid port numbers — must be between 1 and 65535.', 'error')
         return redirect(url_for('admin.user_detail', user_id=user_id))
 
-    if PortForward.query.filter_by(external_port=ext_port).first():
-        flash(f'External port {ext_port} already in use.', 'error')
+    # Check for conflict — a public port can only be assigned to one user.
+    # If protocol is 'both', we block if that port is taken by anyone for any protocol.
+    conflict = PortForward.query.filter_by(external_port=ext_port).first()
+    if conflict:
+        conflict_owner = User.query.get(conflict.user_id)
+        owner_name = conflict_owner.username if conflict_owner else 'another user'
+        flash(
+            f'Public port {ext_port} is already in use'
+            + (f' by {owner_name}' if conflict_owner and conflict_owner.id != user_id else '')
+            + '. Choose a different public port.',
+            'error'
+        )
         return redirect(url_for('admin.user_detail', user_id=user_id))
 
     pf = PortForward(
@@ -184,7 +195,8 @@ def add_port_forward(user_id):
     db.session.add(pf)
     db.session.commit()
     apply_port_forward_rule(pf, user.peer.vpn_ip)
-    flash(f'Port forward {ext_port} → {int_port} ({protocol}) added.', 'success')
+    server_endpoint = ServerConfig.get('server_endpoint', 'server')
+    flash(f'Port forward added: {server_endpoint}:{ext_port} → localhost:{int_port} ({protocol.upper()})', 'success')
     return redirect(url_for('admin.user_detail', user_id=user_id))
 
 
