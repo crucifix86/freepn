@@ -1,0 +1,117 @@
+name: Build AppImage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client-app/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            wireguard-tools \
+            libgirepository1.0-dev \
+            libdbus-1-dev \
+            python3-tk \
+            fuse \
+            libfuse2
+
+      - name: Install Python deps
+        run: pip install pyinstaller pystray Pillow
+
+      - name: Build AppImage
+        working-directory: client-app
+        run: |
+          # PyInstaller bundle
+          pyinstaller \
+            --onedir \
+            --name freepn_tray \
+            --noconsole \
+            --hidden-import pystray._xorg \
+            --hidden-import PIL._tkinter_finder \
+            freepn_tray.py
+
+          # AppDir structure
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp -r dist/freepn_tray/* AppDir/usr/bin/
+          cp freepn.desktop AppDir/usr/share/applications/freepn.desktop
+          cp freepn.desktop AppDir/freepn.desktop
+
+          # Generate icon
+          python3 - <<'PYEOF'
+          from PIL import Image, ImageDraw
+          import os
+          size = 256
+          img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+          draw = ImageDraw.Draw(img)
+          pts = [(size*0.5,size*0.05),(size*0.95,size*0.2),(size*0.95,size*0.55),(size*0.5,size*0.95),(size*0.05,size*0.55),(size*0.05,size*0.2)]
+          draw.polygon(pts, fill=(79,142,247,255))
+          cx,cy = size*0.5,size*0.58
+          bw,bh = size*0.28,size*0.24
+          draw.rectangle([cx-bw/2,cy-bh/2,cx+bw/2,cy+bh/2], fill=(255,255,255,220))
+          sw = size*0.14
+          draw.arc([cx-sw,cy-bh/2-sw*1.2,cx+sw,cy-bh/2+sw*0.2], start=180, end=0, fill=(255,255,255,220), width=int(size*0.06))
+          os.makedirs('AppDir/usr/share/icons/hicolor/256x256/apps', exist_ok=True)
+          img.save('AppDir/usr/share/icons/hicolor/256x256/apps/freepn.png')
+          img.save('AppDir/freepn.png')
+          PYEOF
+
+          # AppRun
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/bash
+          SELF_DIR="$(dirname "$(readlink -f "$0")")"
+          export PATH="$SELF_DIR/usr/bin:$PATH"
+          exec "$SELF_DIR/usr/bin/freepn_tray" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+          # Get appimagetool
+          curl -sSL -o appimagetool \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+
+          # Build
+          ARCH=x86_64 ./appimagetool AppDir FreePN-x86_64.AppImage
+
+      - name: Update latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: FreePN Latest
+          prerelease: true
+          body: |
+            **FreePN Linux Client — Latest Build**
+
+            Built automatically from the latest `main` branch.
+
+            ### Install
+            1. Download `FreePN-x86_64.AppImage`
+            2. `chmod +x FreePN-x86_64.AppImage`
+            3. `./FreePN-x86_64.AppImage`
+
+            ### Usage
+            - System tray icon appears on launch
+            - Click → **Load Config...** → select your `.conf` from the FreePN portal
+            - Click → **Connect**
+
+            Requires `wireguard-tools` on the host (`sudo apt install wireguard-tools`).
+          files: client-app/FreePN-x86_64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
