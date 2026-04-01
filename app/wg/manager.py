@@ -62,8 +62,8 @@ def write_wg_config():
         f"Address = {cfg['VPN_SERVER_IP']}/24",
         f"ListenPort = {cfg['WG_SERVER_PORT']}",
         f"PrivateKey = {private_key}",
-        f"PostUp = iptables -A FORWARD -i {cfg['WG_INTERFACE']} -j ACCEPT; iptables -A FORWARD -o {cfg['WG_INTERFACE']} -j ACCEPT; iptables -t nat -A POSTROUTING -s {cfg['VPN_SUBNET']} -o $(ip route show default | awk '{{print $5}}' | head -1) -j MASQUERADE",
-        f"PostDown = iptables -D FORWARD -i {cfg['WG_INTERFACE']} -j ACCEPT; iptables -D FORWARD -o {cfg['WG_INTERFACE']} -j ACCEPT; iptables -t nat -D POSTROUTING -s {cfg['VPN_SUBNET']} -o $(ip route show default | awk '{{print $5}}' | head -1) -j MASQUERADE",
+        f"PostUp = iptables -A FORWARD -i {cfg['WG_INTERFACE']} -j ACCEPT; iptables -A FORWARD -o {cfg['WG_INTERFACE']} -j ACCEPT; iptables -t nat -A POSTROUTING -s {cfg['VPN_SUBNET']} -o $(ip route show default | awk '{{print $5}}' | head -1) -j MASQUERADE; iptables -t nat -A POSTROUTING -o {cfg['WG_INTERFACE']} -j MASQUERADE",
+        f"PostDown = iptables -D FORWARD -i {cfg['WG_INTERFACE']} -j ACCEPT; iptables -D FORWARD -o {cfg['WG_INTERFACE']} -j ACCEPT; iptables -t nat -D POSTROUTING -s {cfg['VPN_SUBNET']} -o $(ip route show default | awk '{{print $5}}' | head -1) -j MASQUERADE; iptables -t nat -D POSTROUTING -o {cfg['WG_INTERFACE']} -j MASQUERADE",
         "",
     ]
 
@@ -188,11 +188,15 @@ def generate_client_config(user, server_endpoint):
 def apply_port_forward_rule(pf, peer_vpn_ip):
     protos = ['tcp', 'udp'] if pf.protocol == 'both' else [pf.protocol]
     for proto in protos:
+        # Allow inbound on public port
+        run(f"iptables -I INPUT -p {proto} --dport {pf.external_port} -j ACCEPT", check=False)
+        # DNAT to VPN peer
         run(
             f"iptables -t nat -A PREROUTING -p {proto} --dport {pf.external_port} "
             f"-j DNAT --to-destination {peer_vpn_ip}:{pf.internal_port}",
             check=False
         )
+        # Allow forwarding to peer
         run(
             f"iptables -A FORWARD -p {proto} -d {peer_vpn_ip} --dport {pf.internal_port} -j ACCEPT",
             check=False
@@ -206,6 +210,7 @@ def remove_port_forward_rule(pf):
     peer_vpn_ip = user.peer.vpn_ip
     protos = ['tcp', 'udp'] if pf.protocol == 'both' else [pf.protocol]
     for proto in protos:
+        run(f"iptables -D INPUT -p {proto} --dport {pf.external_port} -j ACCEPT", check=False)
         run(
             f"iptables -t nat -D PREROUTING -p {proto} --dport {pf.external_port} "
             f"-j DNAT --to-destination {peer_vpn_ip}:{pf.internal_port}",
