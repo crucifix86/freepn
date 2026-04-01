@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}My Account — FreePN{% endblock %}
+{% block page_title %}My Account{% endblock %}
+
+{% block sidebar %}
+{% if current_user.is_admin %}
+<nav class="sidebar-nav">
+  <div class="nav-section">Admin</div>
+  <a href="/admin/" class="nav-item">Dashboard</a>
+  <a href="/admin/users" class="nav-item">Users</a>
+  <a href="/admin/settings" class="nav-item">Server Settings</a>
+  <div class="nav-section">Account</div>
+  <a href="/account" class="nav-item active">My Account</a>
+</nav>
+{% else %}
+<nav class="sidebar-nav">
+  <div class="nav-section">My Account</div>
+  <a href="/client/" class="nav-item">Dashboard</a>
+  <a href="/client/config" class="nav-item">Download Config</a>
+  <a href="/client/qr" class="nav-item">Mobile QR Code</a>
+  <a href="/account" class="nav-item active">Account Settings</a>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:420px">
+  <div class="card-title">Change Password</div>
+  <form method="POST" action="/account">
+    <div class="form-group">
+      <label>Current Password</label>
+      <input type="password" name="current_password" required autofocus>
+    </div>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" name="new_password" required>
+    </div>
+    <div class="form-group">
+      <label>Confirm New Password</label>
+      <input type="password" name="confirm_password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Update Password</button>
+  </form>
+</div>
+{% endblock %}

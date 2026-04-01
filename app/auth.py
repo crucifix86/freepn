@@ -38,6 +38,29 @@ def login():
     return render_template('login.html')
 
 
+@auth_bp.route('/account', methods=['GET', 'POST'])
+@login_required
+def account():
+    from . import db
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm = request.form.get('confirm_password', '')
+
+        if not current_user.check_password(current_password):
+            flash('Current password is incorrect.', 'error')
+        elif len(new_password) < 6:
+            flash('New password must be at least 6 characters.', 'error')
+        elif new_password != confirm:
+            flash('New passwords do not match.', 'error')
+        else:
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash('Password updated successfully.', 'success')
+
+    return render_template('account.html')
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
