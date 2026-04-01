@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=FreePN
+Comment=FreePN WireGuard VPN Client
+Exec=freepn_tray
+Icon=freepn
+Type=Application
+Categories=Network;VPN;
+StartupNotify=false
+NoDisplay=false
