@@ -63,37 +63,87 @@
   </div>
 </div>
 
-{% if current_user.port_forwards %}
 <div class="card">
-  <div class="card-title">Your Exposed Services</div>
-  <p class="text-muted" style="font-size:12px;margin-bottom:16px">
-    These are the ports your admin has set up so people can reach services running on your machine.
-    Make sure the app is running on your machine and you're connected to the VPN.
-  </p>
+  <div class="section-header">
+    <h2>Port Forwards</h2>
+    <span class="text-muted" style="font-size:12px">Expose services running on your machine to the internet</span>
+  </div>
+
+  <!-- Explainer -->
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px;font-size:12px;color:var(--muted)">
+    <strong style="color:var(--text)">How it works:</strong>
+    You're behind CGNAT — your ISP doesn't give you a public IP, so nobody on the internet can connect directly to your machine.
+    FreePN fixes this: pick a <strong style="color:var(--accent)">public port</strong> on this server and the
+    <strong style="color:var(--success)">port your app listens on</strong> locally — anyone who connects to
+    <span class="monospace">{{ server_endpoint }}:<span style="color:var(--accent)">public port</span></span>
+    will be tunnelled straight to your machine.
+  </div>
+
+  <!-- Add form -->
+  {% if current_user.peer %}
+  <form method="POST" action="/client/port-forwards/new" style="margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr auto;gap:12px;align-items:start">
+      <div>
+        <label>Public Port <span style="color:var(--accent)">&#9679;</span></label>
+        <input type="number" name="external_port" placeholder="e.g. 25565" min="1" max="65535" required>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Port on <em>this server</em> you want to use</div>
+      </div>
+      <div>
+        <label>App Port <span style="color:var(--success)">&#9679;</span></label>
+        <input type="number" name="internal_port" placeholder="e.g. 25565" min="1" max="65535" required>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Port your app is running on locally</div>
+      </div>
+      <div>
+        <label>Protocol</label>
+        <select name="protocol">
+          <option value="tcp">TCP</option>
+          <option value="udp">UDP</option>
+          <option value="both">TCP + UDP</option>
+        </select>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Game servers often need UDP</div>
+      </div>
+      <div>
+        <label>Description</label>
+        <input type="text" name="description" placeholder="e.g. Minecraft, Plex, Web App">
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+  </form>
+  {% else %}
+  <div class="alert alert-warning">Your VPN profile hasn't been configured yet. Contact your admin.</div>
+  {% endif %}
+
+  <!-- Existing forwards -->
+  {% if current_user.port_forwards %}
   <div style="display:flex;flex-direction:column;gap:10px">
     {% for pf in current_user.port_forwards %}
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <strong style="font-size:13px">{{ pf.description or 'Service' }}</strong>
-        <span class="badge badge-accent">{{ pf.protocol.upper() }}</span>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;gap:16px">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <strong style="font-size:13px">{{ pf.description or 'Service' }}</strong>
+          <span class="badge badge-accent">{{ pf.protocol.upper() }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <span style="font-size:11px;color:var(--muted)">Share this address:</span>
+          <span class="monospace" style="color:var(--accent)">{{ server_endpoint }}:{{ pf.external_port }}</span>
+          <span style="color:var(--muted)">→</span>
+          <span style="color:var(--muted);font-size:12px">your</span>
+          <span class="monospace" style="color:var(--success)">localhost:{{ pf.internal_port }}</span>
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
-        People connect to this address to reach your machine:
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;font-size:13px">
-        <span class="monospace" style="color:var(--accent)">{{ server_endpoint }}:{{ pf.external_port }}</span>
-        <span style="color:var(--muted)">→</span>
-        <span style="color:var(--muted)">your machine's</span>
-        <span class="monospace" style="color:var(--success)">localhost:{{ pf.internal_port }}</span>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px">
-        Make sure your app is listening on port <strong>{{ pf.internal_port }}</strong> and you're connected to the VPN.
-      </div>
+      <form method="POST" action="/client/port-forwards/{{ pf.id }}/delete">
+        <button class="btn btn-danger btn-sm">Remove</button>
+      </form>
     </div>
     {% endfor %}
   </div>
+  {% else %}
+  <p class="text-muted" style="font-size:13px">No port forwards yet. Add one above to start exposing services.</p>
+  {% endif %}
 </div>
-{% endif %}
 
 <div class="card">
   <div class="card-title">How to Connect</div>

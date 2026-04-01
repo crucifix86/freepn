@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, Response, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, Response, current_app, request
 from flask_login import login_required, current_user
-from ..models import ServerConfig
-from ..wg.manager import generate_client_config, get_live_peers, fmt_bytes
+from .. import db
+from ..models import ServerConfig, PortForward, User
+from ..wg.manager import generate_client_config, get_live_peers, fmt_bytes, apply_port_forward_rule, remove_port_forward_rule
 import time
 import qrcode
 import io
@@ -61,3 +62,60 @@ def qr_code():
     buf.seek(0)
     b64 = base64.b64encode(buf.getvalue()).decode()
     return render_template('client/qr.html', qr_data=b64)
+
+
+@client_bp.route('/port-forwards/new', methods=['POST'])
+@login_required
+def add_port_forward():
+    if not current_user.peer:
+        flash('Your VPN profile is not set up yet. Contact your admin.', 'error')
+        return redirect(url_for('client.dashboard'))
+
+    try:
+        ext_port = int(request.form.get('external_port', 0))
+        int_port = int(request.form.get('internal_port', 0))
+    except ValueError:
+        flash('Invalid port numbers.', 'error')
+        return redirect(url_for('client.dashboard'))
+
+    protocol = request.form.get('protocol', 'tcp')
+    description = request.form.get('description', '').strip()
+
+    if not (1 <= ext_port <= 65535) or not (1 <= int_port <= 65535):
+        flash('Port numbers must be between 1 and 65535.', 'error')
+        return redirect(url_for('client.dashboard'))
+
+    conflict = PortForward.query.filter_by(external_port=ext_port).first()
+    if conflict:
+        # Don't reveal who owns it — just say it's taken
+        flash(f'Public port {ext_port} is already in use. Please choose a different port.', 'error')
+        return redirect(url_for('client.dashboard'))
+
+    pf = PortForward(
+        user_id=current_user.id,
+        external_port=ext_port,
+        internal_port=int_port,
+        protocol=protocol,
+        description=description,
+    )
+    db.session.add(pf)
+    db.session.commit()
+    apply_port_forward_rule(pf, current_user.peer.vpn_ip)
+
+    server_endpoint = ServerConfig.get('server_endpoint', 'your-vpn-server')
+    flash(f'Port forward added! Share this address: {server_endpoint}:{ext_port}', 'success')
+    return redirect(url_for('client.dashboard'))
+
+
+@client_bp.route('/port-forwards/<int:pf_id>/delete', methods=['POST'])
+@login_required
+def delete_port_forward(pf_id):
+    pf = PortForward.query.get_or_404(pf_id)
+    if pf.user_id != current_user.id:
+        flash('Not authorised.', 'error')
+        return redirect(url_for('client.dashboard'))
+    remove_port_forward_rule(pf)
+    db.session.delete(pf)
+    db.session.commit()
+    flash('Port forward removed.', 'success')
+    return redirect(url_for('client.dashboard'))
