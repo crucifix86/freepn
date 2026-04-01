@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}{{ user.username }} — FreePN Admin{% endblock %}
+{% block page_title %}User: {{ user.username }}{% endblock %}
+{% block topbar_actions %}
+  <div class="flex">
+    <a href="/admin/users/{{ user.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+    <form method="POST" action="/admin/users/{{ user.id }}/delete" onsubmit="return confirm('Delete {{ user.username }}? This cannot be undone.')">
+      <button class="btn btn-danger btn-sm">Delete User</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">Admin</div>
+  <a href="/admin/" class="nav-item">Dashboard</a>
+  <a href="/admin/users" class="nav-item active">Users</a>
+  <a href="/admin/settings" class="nav-item">Server Settings</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <!-- VPN Status -->
+  <div class="card">
+    <div class="card-title">VPN Status</div>
+    {% if user.peer %}
+      <table style="width:100%">
+        <tr><td class="text-muted" style="width:40%">VPN IP</td><td><span class="monospace">{{ user.peer.vpn_ip }}</span></td></tr>
+        <tr><td class="text-muted">Status</td><td>
+          {% if not user.is_active %}<span class="badge badge-muted">Account Disabled</span>
+          {% elif peer_status and (now - peer_status.last_handshake) < 180 %}<span class="badge badge-success">Connected</span>
+          {% else %}<span class="badge badge-muted">Offline</span>{% endif %}
+        </td></tr>
+        {% if peer_status %}
+        <tr><td class="text-muted">Endpoint</td><td><span class="monospace">{{ peer_status.endpoint or '—' }}</span></td></tr>
+        <tr><td class="text-muted">Download</td><td>{{ fmt_bytes(peer_status.rx_bytes) }}</td></tr>
+        <tr><td class="text-muted">Upload</td><td>{{ fmt_bytes(peer_status.tx_bytes) }}</td></tr>
+        <tr><td class="text-muted">Last Handshake</td><td>{{ ((now - peer_status.last_handshake) / 60) | int }}m ago</td></tr>
+        {% endif %}
+      </table>
+      <hr>
+      <form method="POST" action="/admin/users/{{ user.id }}/regen-keys" onsubmit="return confirm('Regenerate keys? User must re-download their config.')">
+        <button class="btn btn-secondary btn-sm">Regenerate Keys</button>
+      </form>
+    {% else %}
+      <p class="text-muted">No peer configured.</p>
+    {% endif %}
+  </div>
+
+  <!-- User Settings -->
+  <div class="card">
+    <div class="card-title">Settings</div>
+    <table style="width:100%">
+      <tr><td class="text-muted" style="width:40%">Account</td><td>
+        {% if user.is_active %}<span class="badge badge-success">Active</span>
+        {% else %}<span class="badge badge-muted">Disabled</span>{% endif %}
+      </td></tr>
+      <tr><td class="text-muted">Tunnel Mode</td><td>
+        {% if user.full_tunnel %}<span class="badge badge-accent">Full Tunnel</span>
+        {% else %}<span class="badge badge-muted">Split Tunnel</span>{% endif %}
+      </td></tr>
+      <tr><td class="text-muted">DNS</td><td><span class="monospace">{{ user.dns }}</span></td></tr>
+      {% if not user.full_tunnel %}
+      <tr><td class="text-muted">Allowed IPs</td><td><span class="monospace">{{ user.allowed_ips }}</span></td></tr>
+      {% endif %}
+      <tr><td class="text-muted">Created</td><td class="text-muted">{{ user.created_at }}</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Port Forwards -->
+<div class="card">
+  <div class="section-header">
+    <h2>Port Forwards</h2>
+  </div>
+
+  {% if user.peer %}
+  <form method="POST" action="/admin/users/{{ user.id }}/port-forwards/new" style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr auto;gap:10px;align-items:end;margin-bottom:16px">
+    <div>
+      <label>External Port</label>
+      <input type="number" name="external_port" placeholder="e.g. 25565" min="1" max="65535">
+    </div>
+    <div>
+      <label>Internal Port</label>
+      <input type="number" name="internal_port" placeholder="e.g. 25565" min="1" max="65535">
+    </div>
+    <div>
+      <label>Protocol</label>
+      <select name="protocol">
+        <option value="tcp">TCP</option>
+        <option value="udp">UDP</option>
+        <option value="both">TCP + UDP</option>
+      </select>
+    </div>
+    <div>
+      <label>Description</label>
+      <input type="text" name="description" placeholder="e.g. Minecraft Server">
+    </div>
+    <div>
+      <label>&nbsp;</label>
+      <button type="submit" class="btn btn-primary">Add</button>
+    </div>
+  </form>
+  {% endif %}
+
+  {% if user.port_forwards %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>External Port</th><th>Internal Port</th><th>Protocol</th><th>Description</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for pf in user.port_forwards %}
+        <tr>
+          <td><span class="monospace">:{{ pf.external_port }}</span></td>
+          <td><span class="monospace">{{ user.peer.vpn_ip if user.peer else '?' }}:{{ pf.internal_port }}</span></td>
+          <td><span class="badge badge-accent">{{ pf.protocol.upper() }}</span></td>
+          <td class="text-muted">{{ pf.description or '—' }}</td>
+          <td>
+            <form method="POST" action="/admin/port-forwards/{{ pf.id }}/delete">
+              <button class="btn btn-danger btn-sm">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No port forwards configured for this user.</p>
+  {% endif %}
+</div>
+
+<!-- WireGuard Public Key -->
+{% if user.peer %}
+<div class="card">
+  <div class="card-title">WireGuard Public Key</div>
+  <span class="monospace">{{ user.peer.public_key }}</span>
+</div>
+{% endif %}
+{% endblock %}

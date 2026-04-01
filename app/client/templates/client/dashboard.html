@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}My VPN — FreePN{% endblock %}
+{% block page_title %}My VPN{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">My Account</div>
+  <a href="/client/" class="nav-item active">Dashboard</a>
+  <a href="/client/config" class="nav-item">Download Config</a>
+  <a href="/client/qr" class="nav-item">Mobile QR Code</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <div class="card">
+    <div class="card-title">Connection Status</div>
+    {% if current_user.peer %}
+      {% if peer_status and (now - peer_status.last_handshake) < 180 %}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="width:12px;height:12px;border-radius:50%;background:var(--success)"></div>
+          <span style="font-size:16px;font-weight:600;color:var(--success)">Connected</span>
+        </div>
+        <table style="width:100%">
+          <tr><td class="text-muted" style="width:40%">Endpoint</td><td><span class="monospace">{{ peer_status.endpoint or '—' }}</span></td></tr>
+          <tr><td class="text-muted">Downloaded</td><td>{{ fmt_bytes(peer_status.rx_bytes) }}</td></tr>
+          <tr><td class="text-muted">Uploaded</td><td>{{ fmt_bytes(peer_status.tx_bytes) }}</td></tr>
+          <tr><td class="text-muted">Last Handshake</td><td>{{ ((now - peer_status.last_handshake) / 60) | int }}m ago</td></tr>
+        </table>
+      {% else %}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="width:12px;height:12px;border-radius:50%;background:var(--muted)"></div>
+          <span style="font-size:16px;font-weight:600;color:var(--muted)">Not Connected</span>
+        </div>
+        <p class="text-muted">Download the config file or scan the QR code to connect.</p>
+      {% endif %}
+    {% else %}
+      <p class="text-muted">Your VPN profile has not been configured yet. Please contact your admin.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">My VPN Profile</div>
+    {% if current_user.peer %}
+      <table style="width:100%">
+        <tr><td class="text-muted" style="width:40%">VPN IP</td><td><span class="monospace">{{ current_user.peer.vpn_ip }}</span></td></tr>
+        <tr><td class="text-muted">Tunnel Mode</td><td>
+          {% if current_user.full_tunnel %}<span class="badge badge-accent">Full Tunnel</span>
+          {% else %}<span class="badge badge-muted">Split Tunnel</span>{% endif %}
+        </td></tr>
+        <tr><td class="text-muted">DNS</td><td><span class="monospace">{{ current_user.dns }}</span></td></tr>
+      </table>
+      <hr>
+      <div class="flex">
+        <a href="/client/config" class="btn btn-primary">Download Config</a>
+        <a href="/client/qr" class="btn btn-secondary">Mobile QR</a>
+      </div>
+    {% else %}
+      <p class="text-muted">No profile configured.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if current_user.port_forwards %}
+<div class="card">
+  <div class="card-title">Port Forwards</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>External Port</th><th>Your Internal Port</th><th>Protocol</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% for pf in current_user.port_forwards %}
+        <tr>
+          <td><span class="monospace">:{{ pf.external_port }}</span></td>
+          <td><span class="monospace">localhost:{{ pf.internal_port }}</span></td>
+          <td><span class="badge badge-accent">{{ pf.protocol.upper() }}</span></td>
+          <td class="text-muted">{{ pf.description or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-title">How to Connect</div>
+  <ol style="padding-left:20px;line-height:2">
+    <li>Download the <a href="/client/config">WireGuard config file</a> or scan the <a href="/client/qr">QR code</a> with the WireGuard mobile app.</li>
+    <li>Install WireGuard: <a href="https://www.wireguard.com/install/">wireguard.com/install</a></li>
+    <li>Import the config and activate the tunnel.</li>
+    <li>Your traffic will route through FreePN once connected.</li>
+  </ol>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Mobile QR Code — FreePN{% endblock %}
+{% block page_title %}Mobile QR Code{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">My Account</div>
+  <a href="/client/" class="nav-item">Dashboard</a>
+  <a href="/client/config" class="nav-item">Download Config</a>
+  <a href="/client/qr" class="nav-item active">Mobile QR Code</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:400px;text-align:center">
+  <div class="card-title">Scan with WireGuard App</div>
+  <img src="data:image/png;base64,{{ qr_data }}" style="width:100%;max-width:320px;border-radius:8px;background:#fff;padding:12px">
+  <p class="text-muted mt-2" style="font-size:12px">Open the WireGuard app on your phone → Add a tunnel → Scan from QR code</p>
+  <div class="mt-2">
+    <a href="/client/config" class="btn btn-secondary btn-sm">Download .conf instead</a>
+  </div>
+</div>
+{% endblock %}

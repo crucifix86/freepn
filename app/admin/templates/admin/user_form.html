@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if action == 'edit' else 'New User' }} — FreePN Admin{% endblock %}
+{% block page_title %}{{ 'Edit User: ' + user.username if action == 'edit' else 'New User' }}{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">Admin</div>
+  <a href="/admin/" class="nav-item">Dashboard</a>
+  <a href="/admin/users" class="nav-item active">Users</a>
+  <a href="/admin/settings" class="nav-item">Server Settings</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <form method="POST" action="{{ '/admin/users/' + user.id|string + '/edit' if action == 'edit' else '/admin/users/new' }}">
+
+    {% if action == 'new' %}
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" name="username" required autofocus>
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+      <label>{{ 'New Password (leave blank to keep current)' if action == 'edit' else 'Password' }}</label>
+      <input type="password" name="password" {{ 'required' if action == 'new' }}>
+    </div>
+
+    <hr>
+
+    <div class="form-group">
+      <label>Tunnel Mode</label>
+      <div class="checkbox-row">
+        <input type="checkbox" name="full_tunnel" id="full_tunnel" {{ 'checked' if action == 'new' or (user and user.full_tunnel) }}>
+        <label for="full_tunnel" style="margin-bottom:0;text-transform:none;font-size:13px;color:var(--text)">Full Tunnel (route all traffic through VPN)</label>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>DNS Servers</label>
+        <input type="text" name="dns" value="{{ user.dns if user else '1.1.1.1, 8.8.8.8' }}" placeholder="1.1.1.1, 8.8.8.8">
+      </div>
+      <div class="form-group">
+        <label>Split Tunnel Routes (AllowedIPs)</label>
+        <input type="text" name="allowed_ips" value="{{ user.allowed_ips if user else '0.0.0.0/0' }}" placeholder="0.0.0.0/0">
+      </div>
+    </div>
+
+    {% if action == 'edit' %}
+    <div class="form-group">
+      <label>Account Status</label>
+      <div class="checkbox-row">
+        <input type="checkbox" name="is_active" id="is_active" {{ 'checked' if user.is_active }}>
+        <label for="is_active" style="margin-bottom:0;text-transform:none;font-size:13px;color:var(--text)">Account Active</label>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="flex mt-2">
+      <button type="submit" class="btn btn-primary">{{ 'Save Changes' if action == 'edit' else 'Create User' }}</button>
+      <a href="{{ '/admin/users/' + user.id|string if action == 'edit' else '/admin/users' }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

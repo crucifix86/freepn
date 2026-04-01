@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Server Settings — FreePN Admin{% endblock %}
+{% block page_title %}Server Settings{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">Admin</div>
+  <a href="/admin/" class="nav-item">Dashboard</a>
+  <a href="/admin/users" class="nav-item">Users</a>
+  <a href="/admin/settings" class="nav-item active">Server Settings</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <div class="card">
+    <div class="card-title">Connection Settings</div>
+    <form method="POST" action="/admin/settings">
+      <div class="form-group">
+        <label>Server Public Endpoint (IP or hostname)</label>
+        <input type="text" name="server_endpoint" value="{{ server_endpoint }}" placeholder="e.g. vpn.example.com or 1.2.3.4">
+        <p class="text-muted mt-2" style="font-size:12px">This is what clients will connect to. Set to your server's public IP.</p>
+      </div>
+      <div class="form-group">
+        <label>Default DNS Servers</label>
+        <input type="text" name="server_dns" value="{{ server_dns }}" placeholder="1.1.1.1, 8.8.8.8">
+      </div>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Server WireGuard Key</div>
+    <p class="text-muted" style="font-size:12px;margin-bottom:10px">Server public key (share this with peers if needed):</p>
+    <div class="monospace" style="padding:10px;word-break:break-all;background:var(--surface2);border-radius:6px;margin-bottom:16px">{{ server_pubkey }}</div>
+    <form method="POST" action="/admin/settings/regen-server-keys" onsubmit="return confirm('WARNING: This will invalidate ALL client configs. Users must re-download. Continue?')">
+      <button class="btn btn-danger btn-sm">Regenerate Server Keys</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

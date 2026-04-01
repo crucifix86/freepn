@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — FreePN Admin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">Admin</div>
+  <a href="/admin/" class="nav-item active">Dashboard</a>
+  <a href="/admin/users" class="nav-item">Users</a>
+  <a href="/admin/settings" class="nav-item">Server Settings</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Users</div>
+    <div class="stat-value accent">{{ users|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Connected Now</div>
+    <div class="stat-value success">{{ connected }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Download</div>
+    <div class="stat-value">{{ total_rx }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Upload</div>
+    <div class="stat-value">{{ total_tx }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Active Connections</div>
+  {% if users %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>VPN IP</th>
+          <th>Status</th>
+          <th>Endpoint</th>
+          <th>RX / TX</th>
+          <th>Last Handshake</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        {% if user.peer %}
+        {% set status = live.get(user.peer.public_key) %}
+        <tr>
+          <td><a href="/admin/users/{{ user.id }}">{{ user.username }}</a></td>
+          <td><span class="monospace">{{ user.peer.vpn_ip }}</span></td>
+          <td>
+            {% if not user.is_active %}
+              <span class="badge badge-muted">Disabled</span>
+            {% elif status and (now - status.last_handshake) < 180 %}
+              <span class="badge badge-success">Connected</span>
+            {% else %}
+              <span class="badge badge-muted">Offline</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">
+            {% if status and status.endpoint %}
+              <span class="monospace">{{ status.endpoint }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-muted">
+            {% if status %}
+              {{ status.rx_bytes | filesizeformat }} / {{ status.tx_bytes | filesizeformat }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-muted">
+            {% if status and status.last_handshake %}
+              {{ ((now - status.last_handshake) / 60) | int }}m ago
+            {% else %}Never{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted">No users yet. <a href="/admin/users/new">Create one</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

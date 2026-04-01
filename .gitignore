@@ -1,0 +1,10 @@
+*.pyc
+__pycache__/
+*.db
+*.sqlite
+venv/
+.env
+*.key
+*.pem
+*.crt
+instance/

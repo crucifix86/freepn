@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Users — FreePN Admin{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block topbar_actions %}<a href="/admin/users/new" class="btn btn-primary btn-sm">+ New User</a>{% endblock %}
+
+{% block sidebar %}
+<nav class="sidebar-nav">
+  <div class="nav-section">Admin</div>
+  <a href="/admin/" class="nav-item">Dashboard</a>
+  <a href="/admin/users" class="nav-item active">Users</a>
+  <a href="/admin/settings" class="nav-item">Server Settings</a>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>VPN IP</th>
+          <th>Status</th>
+          <th>Tunnel</th>
+          <th>Port Forwards</th>
+          <th>Last Seen</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        {% set status = live.get(user.peer.public_key) if user.peer else None %}
+        <tr>
+          <td><a href="/admin/users/{{ user.id }}">{{ user.username }}</a></td>
+          <td>
+            {% if user.peer %}<span class="monospace">{{ user.peer.vpn_ip }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if not user.is_active %}
+              <span class="badge badge-muted">Disabled</span>
+            {% elif status and (now - status.last_handshake) < 180 %}
+              <span class="badge badge-success">Online</span>
+            {% else %}
+              <span class="badge badge-muted">Offline</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if user.full_tunnel %}
+              <span class="badge badge-accent">Full</span>
+            {% else %}
+              <span class="badge badge-muted">Split</span>
+            {% endif %}
+          </td>
+          <td>{{ user.port_forwards|length }}</td>
+          <td class="text-muted">
+            {% if status and status.last_handshake %}
+              {{ ((now - status.last_handshake) / 60) | int }}m ago
+            {% else %}Never{% endif %}
+          </td>
+          <td>
+            <div class="flex">
+              <a href="/admin/users/{{ user.id }}" class="btn btn-secondary btn-sm">View</a>
+              <form method="POST" action="/admin/users/{{ user.id }}/toggle" style="display:inline">
+                <button class="btn btn-secondary btn-sm">
+                  {{ 'Disable' if user.is_active else 'Enable' }}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-muted">No users yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

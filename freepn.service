@@ -1,0 +1,16 @@
+[Unit]
+Description=FreePN WireGuard Management Server
+After=network.target wg-quick@wg0.service
+Wants=wg-quick@wg0.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/freepn
+Environment=FREEPN_PORT=943
+ExecStart=/opt/freepn/venv/bin/python run.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

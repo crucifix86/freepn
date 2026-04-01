@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreePN — Sign In</title>
+  <style>
+    :root { --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3347; --accent:#4f8ef7; --danger:#e05555; --text:#e2e6f3; --muted:#7a82a0; --radius:8px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box { width: 360px; }
+    .logo { text-align: center; font-size: 28px; font-weight: 700; color: var(--accent); margin-bottom: 8px; letter-spacing: 1px; }
+    .logo span { color: var(--text); }
+    .tagline { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; }
+    label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin-bottom: 6px; }
+    input[type=text], input[type=password] { width: 100%; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 14px; outline: none; }
+    input:focus { border-color: var(--accent); }
+    .form-group { margin-bottom: 16px; }
+    .btn { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    .btn:hover { opacity: 0.85; }
+    .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px; font-size: 13px; background: rgba(224,85,85,0.12); border: 1px solid rgba(224,85,85,0.3); color: var(--danger); }
+  </style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo">Free<span>PN</span></div>
+  <div class="tagline">Self-hosted WireGuard VPN Server</div>
+  <div class="card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    <form method="POST" action="/login">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" autofocus autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn">Sign In</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>
